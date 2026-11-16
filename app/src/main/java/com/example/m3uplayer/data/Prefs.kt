@@ -19,11 +19,17 @@ class Prefs(context: Context) {
     private val keyUrl = stringPreferencesKey("playlist_url")
     private val keyFavorites = stringSetPreferencesKey("favorites")
     private val keyLast = stringPreferencesKey("last_channel")
+    private val keySelectedPlaylist = stringPreferencesKey("selected_playlist")
 
+    val selectedPlaylist: Flow<String> = store.data.map { it[keySelectedPlaylist] ?: "1" }
     val activated: Flow<Boolean> = store.data.map { it[keyActivated] ?: false }
     val playlistUrl: Flow<String?> = store.data.map { it[keyUrl] }
     val favorites: Flow<Set<String>> = store.data.map { it[keyFavorites].orEmpty() }
     val lastChannel: Flow<String?> = store.data.map { it[keyLast] }
+
+    suspend fun setSelectedPlaylist(id: String) {
+        store.edit { it[keySelectedPlaylist] = id }
+    }
 
     suspend fun setActivated(value: Boolean) {
         store.edit { it[keyActivated] = value }

@@ -27,6 +27,7 @@ data class UiState(
     val loading: Boolean = false,
     val error: String? = null,
     val playlistUrl: String? = null,
+    val selectedPlaylist: String = "1",
     val channels: List<Channel> = emptyList(),
     val favorites: Set<String> = emptySet(),
     val lastChannelId: String? = null,
@@ -59,9 +60,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             val activated = prefs.activated.first()
-            val url = DEFAULT_PLAYLIST_URL.trim()
+            val selected = prefs.selectedPlaylist.first()
+            val url = if (selected == "2") SECOND_PLAYLIST_URL else DEFAULT_PLAYLIST_URL.trim()
             _ui.update {
-                it.copy(ready = true, activated = activated, playlistUrl = url)
+                it.copy(ready = true, activated = activated, playlistUrl = url, selectedPlaylist = selected)
             }
             if (activated && url.isNotEmpty()) fetch(url)
         }
@@ -75,6 +77,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val url = _ui.value.playlistUrl.orEmpty()
             if (url.isNotEmpty()) fetch(url)
         }
+    }
+
+    fun selectIntegratedPlaylist(id: String) {
+        val selected = if (id == "2") "2" else "1"
+        val url = if (selected == "2") SECOND_PLAYLIST_URL else DEFAULT_PLAYLIST_URL.trim()
+        viewModelScope.launch { prefs.setSelectedPlaylist(selected) }
+        _ui.update { it.copy(selectedPlaylist = selected, playlistUrl = url, query = "", channels = emptyList()) }
+        if (_ui.value.activated) fetch(url)
     }
 
     fun loadPlaylist(url: String) {
@@ -125,6 +135,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private companion object {
+        const val SECOND_PLAYLIST_URL = "https://raw.githubusercontent.com/JMigue85/IPTV-SV/refs/heads/main/IPTVSV.m3u"
         const val GENERIC_ERROR = "Ocurrió un error inesperado al cargar la lista."
         // Lista proporcionada por el usuario para su instalación.
         const val DEFAULT_PLAYLIST_URL = "http://amazing-prada.xyz:80/get.php?username= TanekaG&password=63937363&type=m3u_plus"

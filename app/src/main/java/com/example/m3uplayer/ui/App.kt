@@ -3,6 +3,18 @@ package com.example.m3uplayer.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.tv.material3.Button
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -99,14 +111,32 @@ fun App(vm: MainViewModel) {
         }
 
         if (showPlaylistDialog) {
-            PlaylistDialog(
-                initial = state.playlistUrl.orEmpty(),
-                onDismiss = { showPlaylistDialog = false },
-                onConfirm = { url ->
-                    showPlaylistDialog = false
-                    vm.loadPlaylist(url)
-                },
-            )
+            Dialog(
+                onDismissRequest = { showPlaylistDialog = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Column(
+                    Modifier.width(600.dp)
+                        .background(SurfaceDark, RoundedCornerShape(20.dp))
+                        .padding(32.dp)
+                ) {
+                    Text("Seleccionar lista", style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Elige la lista integrada que quieres ver.", color = TextSecondary)
+                    Spacer(Modifier.height(20.dp))
+                    Button(onClick = {
+                        showPlaylistDialog = false
+                        vm.selectIntegratedPlaylist("1")
+                    }) { Text("Lista 1 · Original" + if (state.selectedPlaylist == "1") " ✓" else "") }
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = {
+                        showPlaylistDialog = false
+                        vm.selectIntegratedPlaylist("2")
+                    }) { Text("Lista 2 · El Salvador" + if (state.selectedPlaylist == "2") " ✓" else "") }
+                    Spacer(Modifier.height(20.dp))
+                    Button(onClick = { showPlaylistDialog = false }) { Text("Cancelar") }
+                }
+            }
         }
 
         if (showSearchDialog) {
