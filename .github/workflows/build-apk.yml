@@ -34,7 +34,8 @@ jobs:
           test -f "$ZIP_FILE" || { echo "No se encontró $ZIP_FILE en la raíz del repositorio"; exit 1; }
           mkdir -p _source
           unzip -q "$ZIP_FILE" -d _source
-          SETTINGS_FILE="$(find _source -type f \\( -name settings.gradle.kts -o -name settings.gradle \\) -print -quit)"
+          SETTINGS_FILE="$(find _source -type f -name settings.gradle.kts -print -quit)"
+          if [ -z "$SETTINGS_FILE" ]; then SETTINGS_FILE="$(find _source -type f -name settings.gradle -print -quit)"; fi
           test -n "$SETTINGS_FILE" || { echo "El ZIP no contiene settings.gradle(.kts)"; find _source -maxdepth 4 -type f | head -100; exit 1; }
           PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
           test -f "$PROJECT_DIR/gradlew" || { echo "No se encontró gradlew junto a settings.gradle"; exit 1; }
