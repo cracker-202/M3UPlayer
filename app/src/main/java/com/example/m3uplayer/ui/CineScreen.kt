@@ -4,6 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,7 +36,7 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
-private data class CineTitle(val title: String, val language: String, val video: String)
+private data class CineTitle(val title: String, val language: String, val video: String, val poster: String, val episode: String)
 private val cineClient = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS)
     .readTimeout(25, TimeUnit.SECONDS).build()
 
@@ -41,6 +46,7 @@ fun CineScreen(section: String, onSelectSection: (String) -> Unit, onPlay: (Stri
     var loading by remember(section) { mutableStateOf(true) }
     var error by remember(section) { mutableStateOf<String?>(null) }
     var retry by remember(section) { mutableStateOf(0) }
+    var languageFilter by remember(section) { mutableStateOf("all") }
 
     LaunchedEffect(section, retry) {
         loading = true
@@ -64,6 +70,13 @@ fun CineScreen(section: String, onSelectSection: (String) -> Unit, onPlay: (Stri
             style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
         Text("Catálogo en línea de Internet Archive · Obras identificadas como dominio público o CC0",
             color = TextSecondary)
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = { languageFilter = "all" }) { Text("Todos") }
+            Button(onClick = { languageFilter = "es" }) { Text("Español") }
+            Button(onClick = { languageFilter = "en" }) { Text("Inglés") }
+            Button(onClick = { retry++ }) { Text("Actualizar") }
+        }
         Spacer(Modifier.height(16.dp))
         when {
             loading -> Row { CircularProgressIndicator(color = Accent); Text(" Buscando títulos…", color = TextPrimary) }
@@ -77,10 +90,14 @@ fun CineScreen(section: String, onSelectSection: (String) -> Unit, onPlay: (Stri
                 Button(onClick = { retry++ }) { Text("Actualizar catálogo") }
             }
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(titles) { item ->
+                items(titles.filter { languageFilter == "all" || (languageFilter == "es" && isSpanish(it.language)) || (languageFilter == "en" && isEnglish(it.language)) }) { item ->
                     Button(onClick = { onPlay(item.title, item.video) },
                         modifier = Modifier.fillMaxWidth()) {
-                        Text(item.title + "  ·  " + item.language)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(model = item.poster, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.size(width = 72.dp, height = 96.dp))
+                            Spacer(Modifier.width(16.dp))
+                            Text(item.title + " · " + item.language + if (item.episode.isBlank()) "" else " · " + item.episode)
+                        }
                     }
                 }
             }
@@ -91,10 +108,10 @@ fun CineScreen(section: String, onSelectSection: (String) -> Unit, onPlay: (Stri
 private fun loadPublicDomainCatalog(section: String): List<CineTitle> {
     // Only items with explicit public-domain/CC0 metadata are considered for playback.
     // Search is refreshed every time this screen is opened; no APK update is needed.
-    val category = if (section == "series") "television" else "feature_films"
+    val category = if (section == "series") "classic_tv" else "feature_films"
     val query = "mediatype:movies AND collection:$category"
     val encoded = URLEncoder.encode(query, "UTF-8")
-    val searchUrl = "https://archive.org/advancedsearch.php?q=$encoded&fl%5B%5D=identifier&rows=35&page=1&output=json"
+    val searchUrl = "https://archive.org/advancedsearch.php?q=$encoded&fl%5B%5D=identifier&rows=60&page=1&output=json"
     val search = requestJson(searchUrl)
     val docs = search.getJSONObject("response").getJSONArray("docs")
     val found = mutableListOf<CineTitle>()
@@ -121,13 +138,15 @@ private fun loadPublicDomainCatalog(section: String): List<CineTitle> {
             }
             if (video != null) {
                 val language = details.optString("language").ifBlank { "Idioma no especificado" }
-                found.add(CineTitle(details.optString("title", identifier), language, video))
+                found.add(CineTitle(details.optString("title", identifier), language, video,
+                    "https://archive.org/services/img/$identifier",
+                    if (section == "series") video.substringAfterLast("/").substringBeforeLast(".") else ""))
             }
         } catch (_: Exception) {
             // A broken catalog item should not prevent loading the remaining items.
         }
     }
-    return found.sortedBy { if (it.language.contains("span", true) || it.language.contains("espa", true)) 0 else 1 }
+    return found.sortedBy { if (isSpanish(it.language)) 0 else if (isEnglish(it.language)) 1 else 2 }
 }
 
 private fun requestJson(url: String): JSONObject {
@@ -137,3 +156,6 @@ private fun requestJson(url: String): JSONObject {
         return JSONObject(response.body?.string() ?: "{}")
     }
 }
+
+private fun isSpanish(s: String) = s.trim().lowercase() in listOf("es", "spa", "spanish", "español", "espanol")
+private fun isEnglish(s: String) = s.trim().lowercase() in listOf("en", "eng", "english")
