@@ -33,6 +33,7 @@ fun App(vm: MainViewModel) {
     val state by vm.ui.collectAsStateWithLifecycle()
 
     var playback by remember { mutableStateOf<PlaybackRequest?>(null) }
+    var section by remember { mutableStateOf("tv") }
     var restoreTick by remember { mutableIntStateOf(0) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
@@ -50,9 +51,10 @@ fun App(vm: MainViewModel) {
     Box(Modifier.fillMaxSize().background(Bg)) {
         // La pantalla principal se mantiene debajo del reproductor para conservar
         // la posición de desplazamiento y devolver el foco al volver.
-        if (state.activated) HomeScreen(
+        if (state.activated && section == "tv") HomeScreen(
             state = state,
             restoreTick = restoreTick,
+            onSelectSection = { section = it },
             onPlay = { list, index -> playback = PlaybackRequest(list, index) },
             onToggleFavorite = vm::toggleFavorite,
             onSearch = { showSearchDialog = true },
@@ -61,6 +63,14 @@ fun App(vm: MainViewModel) {
             onRefresh = vm::refresh,
             adultsUnlocked = adultsUnlocked,
             onRequestAdultPin = { pinError = null; showAdultPin = true },
+        )
+
+        if (state.activated && section != "tv") CineScreen(
+            section = section,
+            onSelectSection = { section = it },
+            onPlay = { title, url ->
+                playback = PlaybackRequest(listOf(Channel(url, title, url, null, "Cine")), 0)
+            },
         )
 
         playback?.let { request ->
