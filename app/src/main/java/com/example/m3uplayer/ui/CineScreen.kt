@@ -109,7 +109,7 @@ private fun loadPublicDomainCatalog(section: String): List<CineTitle> {
     // Only items with explicit public-domain/CC0 metadata are considered for playback.
     // Search is refreshed every time this screen is opened; no APK update is needed.
     val category = if (section == "series") "classic_tv" else "feature_films"
-    val query = "mediatype:movies AND collection:$category"
+    val query = "mediatype:movies AND collection:$category AND (licenseurl:*publicdomain* OR licenseurl:*zero* OR rights:*public*)"
     val encoded = URLEncoder.encode(query, "UTF-8")
     val searchUrl = "https://archive.org/advancedsearch.php?q=$encoded&fl%5B%5D=identifier&rows=60&page=1&output=json"
     val search = requestJson(searchUrl)
