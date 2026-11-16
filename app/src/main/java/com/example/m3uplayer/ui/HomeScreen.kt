@@ -36,6 +36,7 @@ import com.example.m3uplayer.data.Channel
 fun HomeScreen(
     state: UiState,
     restoreTick: Int,
+    onSelectSection: (String) -> Unit,
     onPlay: (List<Channel>, Int) -> Unit,
     onToggleFavorite: (Channel) -> Unit,
     onSearch: () -> Unit,
@@ -66,6 +67,7 @@ fun HomeScreen(
             onRequestAdultPin = onRequestAdultPin,
             adultsUnlocked = adultsUnlocked,
         )
+        SectionTabs("tv", onSelectSection)
         Spacer(Modifier.height(16.dp))
 
         when {
@@ -327,6 +329,17 @@ private fun ErrorState(message: String, onRetry: () -> Unit, onChangePlaylist: (
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = onRetry) { Text("Reintentar") }
                 Button(onClick = onChangePlaylist) { Text("Cambiar lista") }
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionTabs(active: String, onSelect: (String) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf("tv" to "TV Online", "movies" to "Películas", "series" to "Series").forEach { (id, label) ->
+            Button(onClick = { onSelect(id) }) {
+                Text(if (active == id) "● $label" else label)
             }
         }
     }
