@@ -109,7 +109,7 @@ private fun loadPublicDomainCatalog(section: String): List<CineTitle> {
     // Only items with explicit public-domain/CC0 metadata are considered for playback.
     // Search is refreshed every time this screen is opened; no APK update is needed.
     val category = if (section == "series") "classic_tv" else "feature_films"
-    val query = "mediatype:movies AND collection:$category AND (licenseurl:*publicdomain* OR licenseurl:*zero* OR rights:*public*)"
+    val query = "mediatype:movies AND collection:$category AND year:[2000 TO 2026] AND (licenseurl:*publicdomain* OR licenseurl:*zero* OR rights:*public*)"
     val encoded = URLEncoder.encode(query, "UTF-8")
     val searchUrl = "https://archive.org/advancedsearch.php?q=$encoded&fl%5B%5D=identifier&rows=60&page=1&output=json"
     val search = requestJson(searchUrl)
@@ -122,6 +122,18 @@ private fun loadPublicDomainCatalog(section: String): List<CineTitle> {
         try {
             val meta = requestJson("https://archive.org/metadata/$identifier")
             val details = meta.optJSONObject("metadata") ?: continue
+            // Archive's indexed year can be a cataloging date. Require an explicit
+            // production/release date as well; otherwise skip uncertain titles.
+            val productionDate = details.optString("year").ifBlank {
+                details.optString("date")
+            }
+            val yearMatch = Regex("""(?:19|20)\\d{2}""").find(productionDate)
+            val productionYear = yearMatch?.value?.toIntOrNull() ?: continue
+            if (productionYear !in 2000..2026) continue
+            // Reject explicit older release dates even if a later archive year is indexed.
+            val release = details.optString("date")
+            val releaseYear = Regex("""(?:19|20)\\d{2}""").find(release)?.value?.toIntOrNull()
+            if (releaseYear != null && releaseYear < 2000) continue
             val rights = details.optString("licenseurl") + " " + details.optString("rights")
             val normalized = rights.lowercase()
             if (!normalized.contains("publicdomain") && !normalized.contains("public domain") &&
