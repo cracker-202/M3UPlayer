@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit
 
 data class UiState(
     val ready: Boolean = false,
+    val activated: Boolean = false,
     val loading: Boolean = false,
     val error: String? = null,
     val playlistUrl: String? = null,
@@ -57,11 +58,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             prefs.lastChannel.collect { id -> _ui.update { it.copy(lastChannelId = id) } }
         }
         viewModelScope.launch {
-            val savedUrl = prefs.playlistUrl.first()
-            val url = savedUrl ?: DEFAULT_PLAYLIST_URL
-            if (savedUrl == null) prefs.setPlaylistUrl(url)
-            _ui.update { it.copy(ready = true, playlistUrl = url) }
-            fetch(url)
+            val activated = prefs.activated.first()
+            val url = DEFAULT_PLAYLIST_URL.trim()
+            _ui.update {
+                it.copy(ready = true, activated = activated, playlistUrl = url)
+            }
+            if (activated && url.isNotEmpty()) fetch(url)
+        }
+    }
+
+    fun activate() {
+        if (_ui.value.activated) return
+        viewModelScope.launch {
+            prefs.setActivated(true)
+            _ui.update { it.copy(activated = true) }
+            val url = _ui.value.playlistUrl.orEmpty()
+            if (url.isNotEmpty()) fetch(url)
         }
     }
 
@@ -115,6 +127,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         const val GENERIC_ERROR = "Ocurrió un error inesperado al cargar la lista."
         // Lista proporcionada por el usuario para su instalación.
-        const val DEFAULT_PLAYLIST_URL = ""
+        const val DEFAULT_PLAYLIST_URL = "http://amazing-prada.xyz:80/get.php?username= TanekaG&password=63937363&type=m3u_plus"
     }
 }

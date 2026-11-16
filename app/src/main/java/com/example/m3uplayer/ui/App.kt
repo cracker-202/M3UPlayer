@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,10 +29,16 @@ fun App(vm: MainViewModel) {
     var adultsUnlocked by remember { mutableStateOf(false) }
     var pinError by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(state.ready, state.activated) {
+        if (state.ready && !state.activated) {
+            showAdminPin = true
+        }
+    }
+
     Box(Modifier.fillMaxSize().background(Bg)) {
         // La pantalla principal se mantiene debajo del reproductor para conservar
         // la posición de desplazamiento y devolver el foco al volver.
-        HomeScreen(
+        if (state.activated) HomeScreen(
             state = state,
             restoreTick = restoreTick,
             onPlay = { list, index -> playback = PlaybackRequest(list, index) },
@@ -66,7 +73,11 @@ fun App(vm: MainViewModel) {
                     if (entered == "2001") {
                         showAdminPin = false
                         pinError = null
-                        showPlaylistDialog = true
+                        if (!state.activated) {
+                            vm.activate()
+                        } else {
+                            showPlaylistDialog = true
+                        }
                     } else pinError = "PIN incorrecto. Inténtalo de nuevo."
                 },
             )

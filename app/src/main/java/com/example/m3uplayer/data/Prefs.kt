@@ -1,6 +1,7 @@
 package com.example.m3uplayer.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -14,13 +15,19 @@ class Prefs(context: Context) {
 
     private val store = context.applicationContext.dataStore
 
+    private val keyActivated = booleanPreferencesKey("activated")
     private val keyUrl = stringPreferencesKey("playlist_url")
     private val keyFavorites = stringSetPreferencesKey("favorites")
     private val keyLast = stringPreferencesKey("last_channel")
 
+    val activated: Flow<Boolean> = store.data.map { it[keyActivated] ?: false }
     val playlistUrl: Flow<String?> = store.data.map { it[keyUrl] }
     val favorites: Flow<Set<String>> = store.data.map { it[keyFavorites].orEmpty() }
     val lastChannel: Flow<String?> = store.data.map { it[keyLast] }
+
+    suspend fun setActivated(value: Boolean) {
+        store.edit { it[keyActivated] = value }
+    }
 
     suspend fun setPlaylistUrl(url: String) {
         store.edit { it[keyUrl] = url }
