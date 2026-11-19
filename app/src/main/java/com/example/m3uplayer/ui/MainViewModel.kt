@@ -61,7 +61,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val activated = prefs.activated.first()
             val selected = prefs.selectedPlaylist.first()
-            val url = if (selected == "2") SECOND_PLAYLIST_URL else DEFAULT_PLAYLIST_URL.trim()
+            val url = when (selected) {
+                "2" -> SECOND_PLAYLIST_URL
+                "3" -> THIRD_PLAYLIST_URL
+                else -> DEFAULT_PLAYLIST_URL.trim()
+            }
             _ui.update {
                 it.copy(ready = true, activated = activated, playlistUrl = url, selectedPlaylist = selected)
             }
@@ -80,8 +84,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectIntegratedPlaylist(id: String) {
-        val selected = if (id == "2") "2" else "1"
-        val url = if (selected == "2") SECOND_PLAYLIST_URL else DEFAULT_PLAYLIST_URL.trim()
+        val selected = if (id in listOf("1", "2", "3")) id else "1"
+        val url = when (selected) {
+                "2" -> SECOND_PLAYLIST_URL
+                "3" -> THIRD_PLAYLIST_URL
+                else -> DEFAULT_PLAYLIST_URL.trim()
+            }
         viewModelScope.launch { prefs.setSelectedPlaylist(selected) }
         _ui.update { it.copy(selectedPlaylist = selected, playlistUrl = url, query = "", channels = emptyList()) }
         if (_ui.value.activated) fetch(url)
@@ -135,6 +143,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private companion object {
+        const val THIRD_PLAYLIST_URL = "http://android-latinos.com/tv/tv.php"
         const val SECOND_PLAYLIST_URL = "https://raw.githubusercontent.com/JMigue85/IPTV-SV/refs/heads/main/IPTVSV.m3u"
         const val GENERIC_ERROR = "Ocurrió un error inesperado al cargar la lista."
         // Lista proporcionada por el usuario para su instalación.

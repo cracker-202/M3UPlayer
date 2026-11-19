@@ -134,6 +134,11 @@ fun App(vm: MainViewModel) {
                         vm.selectIntegratedPlaylist("2")
                     }) { Text("Lista 2 · El Salvador" + if (state.selectedPlaylist == "2") " ✓" else "") }
                     Spacer(Modifier.height(20.dp))
+                    Button(onClick = {
+                        showPlaylistDialog = false
+                        vm.selectIntegratedPlaylist("3")
+                    }) { Text("Lista 3 · Android Latinos" + if (state.selectedPlaylist == "3") " ✓" else "") }
+
                     Button(onClick = { showPlaylistDialog = false }) { Text("Cancelar") }
                 }
             }
