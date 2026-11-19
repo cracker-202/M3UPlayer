@@ -10,7 +10,9 @@ import java.security.MessageDigest
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
 import java.math.BigInteger
-import org.json.JSONObject\nimport okhttp3.MediaType.Companion.toMediaType\nimport okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 object DeviceActivation {
 
@@ -155,13 +157,9 @@ object DeviceActivation {
         path: String,
         payload: JSONObject
     ): JSONObject {
-        val mediaType = okhttp3.MediaType
-            .parse("application/json")!!
+        val mediaType = "application/json".toMediaType()
 
-        val body = okhttp3.RequestBody.create(
-            mediaType,
-            payload.toString()
-        )
+        val body = payload.toString().toRequestBody(mediaType)
 
         val request = okhttp3.Request.Builder()
             .url(API + path)
