@@ -1,6 +1,10 @@
 package com.example.m3uplayer.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
@@ -32,7 +36,7 @@ private data class PlaybackRequest(val channels: List<Channel>, val index: Int)
 fun App(vm: MainViewModel) {
     val state by vm.ui.collectAsStateWithLifecycle()
 
-    var playback by remember { mutableStateOf<PlaybackRequest?>(null) }
+    var playback by remember(state.playbackRevision) { mutableStateOf<PlaybackRequest?>(null) }
     var restoreTick by remember { mutableIntStateOf(0) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
@@ -122,22 +126,38 @@ fun App(vm: MainViewModel) {
                 ) {
                     Text("Seleccionar lista", style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
                     Spacer(Modifier.height(16.dp))
-                    Text("Elige la lista integrada que quieres ver.", color = TextSecondary)
+                    Text("Elige la lista que quieres ver.", color = TextSecondary)
                     Spacer(Modifier.height(20.dp))
-                    Button(onClick = {
-                        showPlaylistDialog = false
-                        vm.selectIntegratedPlaylist("3")
-                    }) { Text("Lista 1 · Android Latinos" + if (state.selectedPlaylist == "3") " ✓" else "") }
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = {
-                        showPlaylistDialog = false
-                        vm.selectIntegratedPlaylist("2")
-                    }) { Text("Lista 2 · Centro América" + if (state.selectedPlaylist == "2") " ✓" else "") }
-                    Spacer(Modifier.height(20.dp))
-                    Button(onClick = {
-                        showPlaylistDialog = false
-                        vm.selectIntegratedPlaylist("1")
-                    }) { Text("Lista 3 · Original" + if (state.selectedPlaylist == "1") " ✓" else "") }
+                    Column(
+                        Modifier.heightIn(max = 300.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        if (state.playlists.isEmpty()) {
+                            Text(
+                                "No hay listas disponibles.",
+                                color = TextSecondary
+                            )
+                        }
+
+                        state.playlists.forEachIndexed { index, list ->
+                            Button(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    showPlaylistDialog = false
+                                    vm.selectIntegratedPlaylist(list.id)
+                                }
+                            ) {
+                                Text(
+                                    "Lista ${index + 1} · ${list.name}" +
+                                        if (state.selectedPlaylist == list.id)
+                                            " ✓"
+                                        else ""
+                                )
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
 
                     Button(onClick = { showPlaylistDialog = false }) { Text("Cancelar") }
                 }

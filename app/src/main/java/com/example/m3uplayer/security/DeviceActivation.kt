@@ -11,6 +11,7 @@ import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
 import java.math.BigInteger
 import org.json.JSONObject
+import com.example.m3uplayer.data.RemoteConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
@@ -230,8 +231,13 @@ object DeviceActivation {
         val content: String
     ) : java.io.IOException("HTTP " + code)
 
+    @Volatile
+    var remoteConfig: RemoteConfig? = null
+        private set
+
     @Synchronized
     fun checkActivation(): String {
+        remoteConfig = null
         return try {
             ensureIdentity()
 
@@ -255,7 +261,15 @@ object DeviceActivation {
             require(result.getString("deviceId") == deviceId())
 
             when (result.getString("status")) {
-                "active" -> "active"
+                "active" -> {
+                    remoteConfig = runCatching {
+                        RemoteConfig.parse(
+                            result.getJSONObject("config")
+                        )
+                    }.getOrNull()
+
+                    "active"
+                }
                 "pending" -> "pending"
                 "blocked" -> "blocked"
                 "expired" -> "expired"

@@ -52,8 +52,20 @@ class MainActivity : ComponentActivity() {
                                         DeviceActivation.deviceId()
                                     }.getOrDefault("No disponible")
 
-                                    id to DeviceActivation.checkActivation()
+                                    val activation = DeviceActivation.checkActivation()
+
+                                    Triple(
+                                        id,
+                                        activation,
+                                        DeviceActivation.remoteConfig
+                                    )
                                 }
+
+                                viewModel.applyRemoteConfig(
+                                    if (result.second == "active")
+                                        result.third
+                                    else null
+                                )
 
                                 deviceId = result.first
                                 status = result.second
@@ -61,6 +73,7 @@ class MainActivity : ComponentActivity() {
                                 delay(30000L)
                             }
                         } finally {
+                            viewModel.applyRemoteConfig(null)
                             status = "checking"
                         }
                     }

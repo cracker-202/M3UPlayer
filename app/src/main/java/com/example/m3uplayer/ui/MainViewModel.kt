@@ -7,6 +7,8 @@ import com.example.m3uplayer.data.Channel
 import com.example.m3uplayer.data.ChannelRepository
 import com.example.m3uplayer.data.PlaylistException
 import com.example.m3uplayer.data.Prefs
+import com.example.m3uplayer.data.RemoteConfig
+import com.example.m3uplayer.data.RemotePlaylist
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +29,9 @@ data class UiState(
     val loading: Boolean = false,
     val error: String? = null,
     val playlistUrl: String? = null,
-    val selectedPlaylist: String = "1",
+    val selectedPlaylist: String = "",
+    val playlists: List<RemotePlaylist> = emptyList(),
+    val playbackRevision: Int = 0,
     val channels: List<Channel> = emptyList(),
     val favorites: Set<String> = emptySet(),
     val lastChannelId: String? = null,
@@ -61,45 +65,113 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val activated = prefs.activated.first()
             val selected = prefs.selectedPlaylist.first()
-            val url = when (selected) {
-                "2" -> SECOND_PLAYLIST_URL
-                "3" -> THIRD_PLAYLIST_URL
-                else -> DEFAULT_PLAYLIST_URL.trim()
-            }
             _ui.update {
-                it.copy(ready = true, activated = activated, playlistUrl = url, selectedPlaylist = selected)
+                it.copy(
+                    ready = true,
+                    activated = activated,
+                    selectedPlaylist = selected
+                )
             }
-            if (activated && url.isNotEmpty()) fetch(url)
         }
+    }
+
+    fun applyRemoteConfig(config: RemoteConfig?) {
+        val old = _ui.value
+
+        if (!old.ready) return
+
+        if (config == null) {
+            loadJob?.cancel()
+
+            _ui.update {
+                it.copy(
+                    playlists = emptyList(),
+                    playlistUrl = null,
+                    channels = emptyList(),
+                    loading = false,
+                    playbackRevision = it.playbackRevision +
+                        if (old.playlistUrl != null) 1 else 0,
+                    error = "Configuracion remota no disponible."
+                )
+            }
+            return
+        }
+
+        val selected = config.playlists.firstOrNull {
+            it.id == old.selectedPlaylist
+        } ?: config.playlists.first {
+            it.id == config.defaultPlaylistId
+        }
+
+        val changed = old.playlistUrl != selected.url ||
+            old.selectedPlaylist != selected.id
+
+        if (changed) loadJob?.cancel()
+
+        _ui.update {
+            it.copy(
+                playlists = config.playlists,
+                selectedPlaylist = selected.id,
+                playlistUrl = selected.url,
+                channels = if (changed) emptyList() else it.channels,
+                playbackRevision = it.playbackRevision +
+                    if (changed) 1 else 0,
+                error = if (changed) null else it.error
+            )
+        }
+
+        if (old.selectedPlaylist != selected.id) {
+            viewModelScope.launch {
+                prefs.setSelectedPlaylist(selected.id)
+            }
+        }
+
+        if (changed && old.activated) fetch(selected.url)
     }
 
     fun activate() {
         if (_ui.value.activated) return
+
         viewModelScope.launch {
             prefs.setActivated(true)
             _ui.update { it.copy(activated = true) }
-            val url = _ui.value.playlistUrl.orEmpty()
-            if (url.isNotEmpty()) fetch(url)
+            _ui.value.playlistUrl?.let { fetch(it) }
         }
     }
 
     fun selectIntegratedPlaylist(id: String) {
-        val selected = if (id in listOf("1", "2", "3")) id else "1"
-        val url = when (selected) {
-                "2" -> SECOND_PLAYLIST_URL
-                "3" -> THIRD_PLAYLIST_URL
-                else -> DEFAULT_PLAYLIST_URL.trim()
-            }
-        viewModelScope.launch { prefs.setSelectedPlaylist(selected) }
-        _ui.update { it.copy(selectedPlaylist = selected, playlistUrl = url, query = "", channels = emptyList()) }
-        if (_ui.value.activated) fetch(url)
+        val selected = _ui.value.playlists.firstOrNull {
+            it.id == id
+        } ?: return
+
+        if (_ui.value.selectedPlaylist == id &&
+            _ui.value.playlistUrl == selected.url) return
+
+        loadJob?.cancel()
+
+        viewModelScope.launch {
+            prefs.setSelectedPlaylist(id)
+        }
+
+        _ui.update {
+            it.copy(
+                selectedPlaylist = id,
+                playlistUrl = selected.url,
+                query = "",
+                channels = emptyList(),
+                playbackRevision = it.playbackRevision + 1
+            )
+        }
+
+        if (_ui.value.activated) fetch(selected.url)
     }
 
     fun loadPlaylist(url: String) {
-        val clean = url.trim()
-        viewModelScope.launch { prefs.setPlaylistUrl(clean) }
-        _ui.update { it.copy(playlistUrl = clean, query = "") }
-        fetch(clean)
+        val selected = _ui.value.playlists.firstOrNull {
+            it.url == url.trim()
+        } ?: return
+
+        selectIntegratedPlaylist(selected.id)
     }
 
     fun refresh() {
@@ -143,10 +215,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private companion object {
-        const val THIRD_PLAYLIST_URL = "http://android-latinos.com/tv/tv.php"
-        const val SECOND_PLAYLIST_URL = "https://raw.githubusercontent.com/JMigue85/IPTV-SV/refs/heads/main/IPTVSV.m3u"
         const val GENERIC_ERROR = "Ocurrió un error inesperado al cargar la lista."
-        // Lista proporcionada por el usuario para su instalación.
-        const val DEFAULT_PLAYLIST_URL = "http://amazing-prada.xyz:80/get.php?username= TanekaG&password=63937363&type=m3u_plus"
     }
 }
