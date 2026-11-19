@@ -57,7 +57,7 @@ fun App(vm: MainViewModel) {
             onToggleFavorite = vm::toggleFavorite,
             onSearch = { showSearchDialog = true },
             onClearSearch = { vm.setQuery("") },
-            onChangePlaylist = { pinError = null; showAdminPin = true },
+            onChangePlaylist = { showPlaylistDialog = true },
             onRefresh = vm::refresh,
             adultsUnlocked = adultsUnlocked,
             onRequestAdultPin = { pinError = null; showAdultPin = true },
@@ -126,18 +126,18 @@ fun App(vm: MainViewModel) {
                     Spacer(Modifier.height(20.dp))
                     Button(onClick = {
                         showPlaylistDialog = false
-                        vm.selectIntegratedPlaylist("1")
-                    }) { Text("Lista 1 · Original" + if (state.selectedPlaylist == "1") " ✓" else "") }
+                        vm.selectIntegratedPlaylist("3")
+                    }) { Text("Lista 1 · Android Latinos" + if (state.selectedPlaylist == "3") " ✓" else "") }
                     Spacer(Modifier.height(12.dp))
                     Button(onClick = {
                         showPlaylistDialog = false
                         vm.selectIntegratedPlaylist("2")
-                    }) { Text("Lista 2 · El Salvador" + if (state.selectedPlaylist == "2") " ✓" else "") }
+                    }) { Text("Lista 2 · Centro América" + if (state.selectedPlaylist == "2") " ✓" else "") }
                     Spacer(Modifier.height(20.dp))
                     Button(onClick = {
                         showPlaylistDialog = false
-                        vm.selectIntegratedPlaylist("3")
-                    }) { Text("Lista 3 · Android Latinos" + if (state.selectedPlaylist == "3") " ✓" else "") }
+                        vm.selectIntegratedPlaylist("1")
+                    }) { Text("Lista 3 · Original" + if (state.selectedPlaylist == "1") " ✓" else "") }
 
                     Button(onClick = { showPlaylistDialog = false }) { Text("Cancelar") }
                 }
