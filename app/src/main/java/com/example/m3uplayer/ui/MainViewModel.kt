@@ -47,7 +47,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .readTimeout(30, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
-            .build()
+            .build(),
+        app.applicationContext
     )
 
     private val _ui = MutableStateFlow(UiState())
@@ -175,7 +176,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refresh() {
-        _ui.value.playlistUrl?.let { fetch(it) }
+        if (!_ui.value.activated) return
+        _ui.value.playlistUrl?.let {
+            fetch(it, forceRefresh = true)
+        }
     }
 
     fun setQuery(query: String) {
@@ -190,12 +194,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.setLastChannel(channel.id) }
     }
 
-    private fun fetch(url: String) {
+    private fun fetch(
+        url: String,
+        forceRefresh: Boolean = false
+    ) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null) }
             try {
-                val list = repository.load(url)
+                val list = repository.load(url, forceRefresh)
                 _ui.update { it.copy(loading = false, channels = list) }
             } catch (e: CancellationException) {
                 throw e
