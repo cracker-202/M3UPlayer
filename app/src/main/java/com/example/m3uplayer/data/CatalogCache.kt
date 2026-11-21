@@ -58,7 +58,7 @@ class CatalogCache(
                             val valid = temp.bufferedReader().use { reader ->
                                 reader.readLine()
                                     ?.trim()
-                                    ?.trimStart('\\uFEFF')
+                                    ?.trimStart('\uFEFF')
                                     ?.startsWith("#EXTM3U", ignoreCase = true) == true
                             }
 
