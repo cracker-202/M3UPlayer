@@ -126,7 +126,7 @@ fun PlayerScreen(
                     exo.playWhenReady = true
                 } else {
                     buffering = false
-                    errorMessage = "No se pudo reproducir este canal."
+                    errorMessage = "Error ${error.errorCode}: ${error.cause?.message ?: error.message}"
                 }
             }
         }
