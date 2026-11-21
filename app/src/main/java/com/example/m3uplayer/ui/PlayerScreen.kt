@@ -206,6 +206,25 @@ fun PlayerScreen(
         }
     }
 
+    LaunchedEffect(useVlc, channel.url) {
+        if (useVlc) {
+            while (!vlcPlayer.vlcVout.areViewsAttached()) {
+                delay(50)
+            }
+            val media = Media(
+                libVlc,
+                android.net.Uri.parse(channel.url)
+            )
+            try {
+                vlcPlayer.stop()
+                vlcPlayer.media = media
+            } finally {
+                media.release()
+            }
+            vlcPlayer.play()
+        }
+    }
+
     LaunchedEffect(channel.url) {
         vlcPlayer.stop()
         useVlc = false
@@ -216,7 +235,9 @@ fun PlayerScreen(
         val hls = channel.url.contains(".m3u8", ignoreCase = true)
         exo.setMediaItem(mediaItem(channel.url, forceHls = hls))
         exo.prepare()
-        exo.playWhenReady = true
+        if (!useVlc) {
+            exo.playWhenReady = true
+        }
         userPaused = false
         onWatched(channel)
         infoTick++
@@ -328,16 +349,6 @@ fun PlayerScreen(
                         vlcPlayer.vlcVout.setVideoView(surface)
                         vlcPlayer.vlcVout.attachViews()
 
-                        val media = Media(
-                            libVlc,
-                            android.net.Uri.parse(channel.url)
-                        )
-                        try {
-                            vlcPlayer.media = media
-                        } finally {
-                            media.release()
-                        }
-                        vlcPlayer.play()
                     }
                 },
                 onRelease = {
