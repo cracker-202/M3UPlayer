@@ -136,6 +136,34 @@ fun PlayerScreen(
         }
     }
 
+    DisposableEffect(vlcPlayer) {
+        vlcPlayer.setEventListener { event ->
+            when (event.type) {
+                MediaPlayer.Event.Playing -> {
+                    if (useVlc) {
+                        buffering = false
+                        errorMessage = null
+                    }
+                }
+                MediaPlayer.Event.Buffering -> {
+                    if (useVlc) {
+                        buffering = event.buffering < 100f
+                    }
+                }
+                MediaPlayer.Event.EncounteredError -> {
+                    if (useVlc) {
+                        buffering = false
+                        errorMessage = "VLC no pudo reproducir este canal"
+                    }
+                }
+            }
+        }
+
+        onDispose {
+            vlcPlayer.setEventListener(null)
+        }
+    }
+
     DisposableEffect(exo) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -143,8 +171,23 @@ fun PlayerScreen(
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                buffering = false
-                errorMessage = "Error ${error.errorCode}: ${error.cause?.message ?: error.message}"
+                val httpError = generateSequence(error as Throwable?) {
+                    it.cause
+                }.filterIsInstance<
+                    androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
+                >().firstOrNull()
+
+                val blockedHttp = httpError?.responseCode in listOf(401, 403, 429)
+
+                if (!useVlc && !blockedHttp) {
+                    useVlc = true
+                    errorMessage = null
+                    buffering = true
+                    exo.pause()
+                } else {
+                    buffering = false
+                    errorMessage = "Error ${error.errorCode}: ${error.cause?.message ?: error.message}"
+                }
             }
         }
         exo.addListener(listener)
@@ -154,7 +197,20 @@ fun PlayerScreen(
         }
     }
 
+    LaunchedEffect(useVlc, channel.url) {
+        if (useVlc) {
+            exo.playWhenReady = false
+            exo.stop()
+            vlcError = null
+            errorMessage = null
+            buffering = true
+        }
+    }
+
     LaunchedEffect(channel.url) {
+        vlcPlayer.stop()
+        useVlc = false
+        vlcError = null
         errorMessage = null
         buffering = true
         delay(150) // evita saturar la red si se cambia de canal muy rápido
@@ -175,8 +231,15 @@ fun PlayerScreen(
 
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { exo.pause() }
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { if (!userPaused) exo.play() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        if (useVlc) vlcPlayer.pause() else exo.pause()
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        if (!userPaused) {
+            if (useVlc) vlcPlayer.play() else exo.play()
+        }
+    }
 
     BackHandler(onBack = onBack)
 
@@ -203,20 +266,34 @@ fun PlayerScreen(
                         true
                     }
                     Key.MediaPlayPause -> {
-                        if (exo.isPlaying) {
-                            exo.pause(); userPaused = true
+                        if (useVlc) {
+                            if (vlcPlayer.isPlaying) {
+                                vlcPlayer.pause()
+                                userPaused = true
+                            } else {
+                                vlcPlayer.play()
+                                userPaused = false
+                            }
                         } else {
-                            exo.play(); userPaused = false
+                            if (exo.isPlaying) {
+                                exo.pause()
+                                userPaused = true
+                            } else {
+                                exo.play()
+                                userPaused = false
+                            }
                         }
                         infoTick++
                         true
                     }
                     Key.MediaPlay -> {
-                        exo.play(); userPaused = false
+                        if (useVlc) vlcPlayer.play() else exo.play()
+                        userPaused = false
                         true
                     }
                     Key.MediaPause -> {
-                        exo.pause(); userPaused = true
+                        if (useVlc) vlcPlayer.pause() else exo.pause()
+                        userPaused = true
                         infoTick++
                         true
                     }
@@ -237,6 +314,41 @@ fun PlayerScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+
+        if (useVlc) {
+            AndroidView(
+                factory = { ctx ->
+                    SurfaceView(ctx).apply {
+                        keepScreenOn = true
+                        isFocusable = false
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                update = { surface ->
+                    if (!vlcPlayer.vlcVout.areViewsAttached()) {
+                        vlcPlayer.vlcVout.setVideoView(surface)
+                        vlcPlayer.vlcVout.attachViews()
+
+                        val media = Media(
+                            libVlc,
+                            android.net.Uri.parse(channel.url)
+                        )
+                        try {
+                            vlcPlayer.media = media
+                        } finally {
+                            media.release()
+                        }
+                        vlcPlayer.play()
+                    }
+                },
+                onRelease = {
+                    vlcPlayer.stop()
+                    if (vlcPlayer.vlcVout.areViewsAttached()) {
+                        vlcPlayer.vlcVout.detachViews()
+                    }
+                },
+            )
+        }
 
         if (buffering && errorMessage == null) {
             CircularProgressIndicator(
