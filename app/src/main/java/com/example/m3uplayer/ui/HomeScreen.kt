@@ -138,7 +138,7 @@ private fun Header(
     }
 }
 
-private fun isAdultChannel(channel: Channel): Boolean {
+internal fun isAdultChannel(channel: Channel): Boolean {
     val text = (channel.name + " " + channel.group).lowercase()
     val markers = listOf("adult", "xxx", "18+", "18 plus", "erotic", "erot", "porn", "sex", "hot")
     return markers.any { it in text }
