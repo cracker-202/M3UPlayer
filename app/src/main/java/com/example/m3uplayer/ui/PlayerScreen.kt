@@ -86,6 +86,7 @@ private fun mediaItem(url: String, forceHls: Boolean): MediaItem =
 fun PlayerScreen(
     channels: List<Channel>,
     startIndex: Int,
+    preferVlc: Boolean = false,
     onBack: () -> Unit,
     onWatched: (Channel) -> Unit,
 ) {
@@ -101,7 +102,7 @@ fun PlayerScreen(
 
     val currentChannel by rememberUpdatedState(channel)
     val focusRequester = remember { FocusRequester() }
-    var useVlc by remember { mutableStateOf(false) }
+    var useVlc by remember { mutableStateOf(preferVlc) }
     var vlcError by remember { mutableStateOf<String?>(null) }
 
     val exo = remember {
@@ -198,46 +199,53 @@ fun PlayerScreen(
 
     LaunchedEffect(useVlc, channel.url) {
         if (useVlc) {
+            delay(200)
             exo.playWhenReady = false
             exo.stop()
             vlcError = null
             errorMessage = null
             buffering = true
-        }
-    }
 
-    LaunchedEffect(useVlc, channel.url) {
-        if (useVlc) {
             while (!vlcPlayer.vlcVout.areViewsAttached()) {
                 delay(50)
             }
+
             val media = Media(
                 libVlc,
                 android.net.Uri.parse(channel.url)
             )
+
             try {
                 vlcPlayer.stop()
                 vlcPlayer.media = media
             } finally {
                 media.release()
             }
+
             vlcPlayer.play()
         }
     }
 
-    LaunchedEffect(channel.url) {
-        vlcPlayer.stop()
-        useVlc = false
+    LaunchedEffect(channel.url, preferVlc) {
+        if (!preferVlc) vlcPlayer.stop()
+        useVlc = preferVlc
         vlcError = null
         errorMessage = null
         buffering = true
-        delay(150) // evita saturar la red si se cambia de canal muy rápido
-        val hls = channel.url.contains(".m3u8", ignoreCase = true)
-        exo.setMediaItem(mediaItem(channel.url, forceHls = hls))
-        exo.prepare()
-        if (!useVlc) {
-            exo.playWhenReady = true
+        delay(150)
+
+        if (!preferVlc) {
+            val hls = channel.url.contains(".m3u8", ignoreCase = true)
+            exo.setMediaItem(mediaItem(channel.url, forceHls = hls))
+            exo.prepare()
+            if (!useVlc) {
+                exo.playWhenReady = true
+            }
+        } else {
+            exo.playWhenReady = false
+            exo.stop()
         }
+
         userPaused = false
         onWatched(channel)
         infoTick++

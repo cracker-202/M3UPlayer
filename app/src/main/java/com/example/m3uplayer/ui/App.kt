@@ -31,7 +31,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.m3uplayer.data.Channel
 import com.example.m3uplayer.data.CatalogSource
 
-private data class PlaybackRequest(val channels: List<Channel>, val index: Int)
+private data class PlaybackRequest(
+    val channels: List<Channel>,
+    val index: Int,
+    val preferVlc: Boolean = false
+)
 
 @Composable
 fun App(vm: MainViewModel) {
@@ -86,7 +90,7 @@ fun App(vm: MainViewModel) {
                             CineRows(
                                 channels = catalog,
                                 onPlay = { list, index ->
-                                    playback = PlaybackRequest(list, index)
+                                    playback = PlaybackRequest(list, index, preferVlc = true)
                                 }
                             )
                         } else {
@@ -127,6 +131,7 @@ fun App(vm: MainViewModel) {
             PlayerScreen(
                 channels = request.channels,
                 startIndex = request.index,
+                preferVlc = request.preferVlc,
                 onBack = {
                     playback = null
                     restoreTick++
