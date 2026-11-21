@@ -67,12 +67,17 @@ class MainActivity : ComponentActivity() {
                                     else null
                                 )
 
+                                if (result.second != "active") {
+                                    viewModel.clearCatalog()
+                                }
+
                                 deviceId = result.first
                                 status = result.second
 
                                 delay(30000L)
                             }
                         } finally {
+                            viewModel.clearCatalog()
                             viewModel.applyRemoteConfig(null)
                             status = "checking"
                         }

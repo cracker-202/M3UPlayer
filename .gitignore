@@ -9,3 +9,5 @@
 .externalNativeBuild
 .cxx
 *.apk
+
+app/src/main/java/com/example/m3uplayer/data/CatalogSource.kt

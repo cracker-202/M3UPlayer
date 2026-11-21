@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.m3uplayer.data.Channel
+import com.example.m3uplayer.data.CatalogSource
 
 private data class PlaybackRequest(val channels: List<Channel>, val index: Int)
 
@@ -38,6 +39,7 @@ fun App(vm: MainViewModel) {
 
     var playback by remember(state.playbackRevision) { mutableStateOf<PlaybackRequest?>(null) }
     var restoreTick by remember { mutableIntStateOf(0) }
+    var cineSection by remember { mutableStateOf(CineSection.MOVIES) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
     var showAdminPin by remember { mutableStateOf(false) }
@@ -51,21 +53,75 @@ fun App(vm: MainViewModel) {
         }
     }
 
+    LaunchedEffect(state.activated, CatalogSource.URL) {
+        if (state.activated && CatalogSource.URL.isNotBlank()) {
+            vm.loadCatalog(CatalogSource.URL)
+        }
+    }
+
     Box(Modifier.fillMaxSize().background(Bg)) {
         // La pantalla principal se mantiene debajo del reproductor para conservar
         // la posición de desplazamiento y devolver el foco al volver.
-        if (state.activated) HomeScreen(
-            state = state,
-            restoreTick = restoreTick,
-            onPlay = { list, index -> playback = PlaybackRequest(list, index) },
-            onToggleFavorite = vm::toggleFavorite,
-            onSearch = { showSearchDialog = true },
-            onClearSearch = { vm.setQuery("") },
-            onChangePlaylist = { showPlaylistDialog = true },
-            onRefresh = vm::refresh,
-            adultsUnlocked = adultsUnlocked,
-            onRequestAdultPin = { pinError = null; showAdultPin = true },
-        )
+        if (state.activated) Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            CineTabs(
+                selected = cineSection,
+                onSelect = { cineSection = it }
+            )
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (cineSection) {
+                    CineSection.MOVIES,
+                    CineSection.SERIES -> {
+                        val allCatalog = if (cineSection == CineSection.MOVIES)
+                            state.movies else state.series
+
+                        val catalog = remember(allCatalog, adultsUnlocked) {
+                            if (adultsUnlocked) allCatalog
+                            else allCatalog.filterNot(::isAdultChannel)
+                        }
+
+                        if (catalog.isNotEmpty()) {
+                            CineRows(
+                                channels = catalog,
+                                onPlay = { list, index ->
+                                    playback = PlaybackRequest(list, index)
+                                }
+                            )
+                        } else {
+                            androidx.tv.material3.Text(
+                                text = when {
+                                    state.catalogLoading -> "Cargando catálogo..."
+                                    state.catalogError != null -> state.catalogError
+                                    else -> "Preparando catálogo..."
+                                } ?: "",
+                                color = TextPrimary,
+                                modifier = Modifier.padding(48.dp)
+                            )
+                        }
+                    }
+
+                    CineSection.LIVE_TV -> HomeScreen(
+                        state = state,
+                        restoreTick = restoreTick,
+                        onPlay = { list, index ->
+                            playback = PlaybackRequest(list, index)
+                        },
+                        onToggleFavorite = vm::toggleFavorite,
+                        onSearch = { showSearchDialog = true },
+                        onClearSearch = { vm.setQuery("") },
+                        onChangePlaylist = { showPlaylistDialog = true },
+                        onRefresh = vm::refresh,
+                        adultsUnlocked = adultsUnlocked,
+                        onRequestAdultPin = {
+                            pinError = null
+                            showAdultPin = true
+                        },
+                    )
+                }
+            }
+        }
 
         playback?.let { request ->
             PlayerScreen(

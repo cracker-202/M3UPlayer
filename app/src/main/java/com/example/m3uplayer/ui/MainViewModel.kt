@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.m3uplayer.data.Channel
+import com.example.m3uplayer.data.CatalogCache
+import com.example.m3uplayer.data.CatalogClassifier
 import com.example.m3uplayer.data.ChannelRepository
 import com.example.m3uplayer.data.PlaylistException
 import com.example.m3uplayer.data.Prefs
@@ -33,6 +35,10 @@ data class UiState(
     val playlists: List<RemotePlaylist> = emptyList(),
     val playbackRevision: Int = 0,
     val channels: List<Channel> = emptyList(),
+    val movies: List<Channel> = emptyList(),
+    val series: List<Channel> = emptyList(),
+    val catalogLoading: Boolean = false,
+    val catalogError: String? = null,
     val favorites: Set<String> = emptySet(),
     val lastChannelId: String? = null,
     val query: String = "",
@@ -41,6 +47,14 @@ data class UiState(
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = Prefs(app)
+    private val catalogClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .build()
+    private val catalogCache = CatalogCache(
+        app.applicationContext,
+        catalogClient
+    )
     private val repository = ChannelRepository(
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -179,6 +193,55 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (!_ui.value.activated) return
         _ui.value.playlistUrl?.let {
             fetch(it, forceRefresh = true)
+        }
+    }
+
+    private var catalogJob: Job? = null
+
+    fun clearCatalog() {
+        catalogJob?.cancel()
+        catalogJob = null
+        _ui.update {
+            it.copy(
+                movies = emptyList(),
+                series = emptyList(),
+                catalogLoading = false,
+                catalogError = null
+            )
+        }
+    }
+
+    fun loadCatalog(source: String) {
+        if (!_ui.value.activated) return
+
+        catalogJob?.cancel()
+        catalogJob = viewModelScope.launch {
+            _ui.update {
+                it.copy(catalogLoading = true, catalogError = null)
+            }
+
+            try {
+                val catalog = catalogCache.load(source)
+                val movies = CatalogClassifier.movies(catalog)
+                val series = CatalogClassifier.series(catalog)
+
+                _ui.update {
+                    it.copy(
+                        movies = movies,
+                        series = series,
+                        catalogLoading = false
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update {
+                    it.copy(
+                        catalogLoading = false,
+                        catalogError = e.message ?: "Error al cargar catálogo"
+                    )
+                }
+            }
         }
     }
 

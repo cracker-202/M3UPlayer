@@ -25,6 +25,28 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Generate catalog configuration
+        env:
+          CATALOG_URL: ${{ secrets.ZORRILLO_CATALOG_URL }}
+        run: |
+          python3 - <<'PYGEN'
+          import os
+          import json
+          from pathlib import Path
+
+          url = os.environ.get("CATALOG_URL", "")
+          if not url:
+              raise SystemExit("Falta ZORRILLO_CATALOG_URL")
+
+          path = Path("app/src/main/java/com/example/m3uplayer/data/CatalogSource.kt")
+          path.write_text(
+              "package com.example.m3uplayer.data\n"
+              "object CatalogSource {\n"
+              "    const val URL = " + json.dumps(url) + "\n"
+              "}\n"
+          )
+          PYGEN
+
       - name: Build Zorrillo TV
         run: |
           chmod +x ./gradlew
