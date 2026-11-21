@@ -56,6 +56,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import android.view.SurfaceView
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
+import org.videolan.libvlc.IVLCVout
+import android.view.SurfaceHolder
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.m3uplayer.data.Channel
@@ -94,9 +100,10 @@ fun PlayerScreen(
     var infoVisible by remember { mutableStateOf(true) }
     var userPaused by remember { mutableStateOf(false) }
 
-    val retriedAsHls = remember { BooleanArray(1) }
     val currentChannel by rememberUpdatedState(channel)
     val focusRequester = remember { FocusRequester() }
+    var useVlc by remember { mutableStateOf(false) }
+    var vlcError by remember { mutableStateOf<String?>(null) }
 
     val exo = remember {
         val http = DefaultHttpDataSource.Factory()
@@ -111,6 +118,24 @@ fun PlayerScreen(
             .build()
     }
 
+    val libVlc = remember {
+        LibVLC(context.applicationContext, arrayListOf(
+            "--network-caching=1500"
+        ))
+    }
+
+    val vlcPlayer = remember {
+        MediaPlayer(libVlc)
+    }
+
+    DisposableEffect(vlcPlayer, libVlc) {
+        onDispose {
+            vlcPlayer.stop()
+            vlcPlayer.release()
+            libVlc.release()
+        }
+    }
+
     DisposableEffect(exo) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -118,16 +143,8 @@ fun PlayerScreen(
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                if (!retriedAsHls[0]) {
-                    // Muchas listas usan URLs sin extensión .m3u8: se reintenta como HLS.
-                    retriedAsHls[0] = true
-                    exo.setMediaItem(mediaItem(currentChannel.url, forceHls = true))
-                    exo.prepare()
-                    exo.playWhenReady = true
-                } else {
-                    buffering = false
-                    errorMessage = "Error ${error.errorCode}: ${error.cause?.message ?: error.message}"
-                }
+                buffering = false
+                errorMessage = "Error ${error.errorCode}: ${error.cause?.message ?: error.message}"
             }
         }
         exo.addListener(listener)
@@ -142,7 +159,6 @@ fun PlayerScreen(
         buffering = true
         delay(150) // evita saturar la red si se cambia de canal muy rápido
         val hls = channel.url.contains(".m3u8", ignoreCase = true)
-        retriedAsHls[0] = hls
         exo.setMediaItem(mediaItem(channel.url, forceHls = hls))
         exo.prepare()
         exo.playWhenReady = true
