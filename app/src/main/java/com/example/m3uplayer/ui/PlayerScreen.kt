@@ -60,7 +60,6 @@ import android.view.SurfaceView
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
-import org.videolan.libvlc.IVLCVout
 import android.view.SurfaceHolder
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
