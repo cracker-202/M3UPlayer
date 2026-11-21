@@ -120,7 +120,8 @@ fun PlayerScreen(
 
     val libVlc = remember {
         LibVLC(context.applicationContext, arrayListOf(
-            "--network-caching=1500"
+            "--network-caching=1500",
+            "--verbose=2"
         ))
     }
 
