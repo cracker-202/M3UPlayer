@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +48,7 @@ fun PlaylistDialog(
 
         Column(
             Modifier
-                .width(720.dp)
+                .padding(horizontal = 16.dp).widthIn(max = 720.dp).fillMaxWidth()
                 .background(SurfaceDark, RoundedCornerShape(20.dp))
                 .padding(32.dp)
         ) {
@@ -108,7 +108,7 @@ fun SearchDialog(
 
         Column(
             Modifier
-                .width(720.dp)
+                .padding(horizontal = 16.dp).widthIn(max = 720.dp).fillMaxWidth()
                 .background(SurfaceDark, RoundedCornerShape(20.dp))
                 .padding(32.dp)
         ) {
@@ -157,7 +157,7 @@ fun PinDialog(
     ) {
         LaunchedEffect(Unit) { runCatching { requester.requestFocus() } }
         Column(
-            Modifier.width(520.dp)
+            Modifier.padding(horizontal = 16.dp).widthIn(max = 520.dp).fillMaxWidth()
                 .background(SurfaceDark, RoundedCornerShape(20.dp))
                 .padding(32.dp)
         ) {
