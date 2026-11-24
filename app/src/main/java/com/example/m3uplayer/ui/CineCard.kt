@@ -1,6 +1,8 @@
 package com.example.m3uplayer.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.runtime.Composable
 import coil.compose.SubcomposeAsyncImage
 import com.example.m3uplayer.data.Channel
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CineCard(
     channel: Channel,
@@ -30,21 +33,10 @@ fun CineCard(
 ) {
     val shape = RoundedCornerShape(16.dp)
 
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        shape = CardDefaults.shape(shape),
-        colors = CardDefaults.colors(
-            containerColor = Color(0xFF191C24)
-        ),
-        scale = CardDefaults.scale(focusedScale = 1.08f),
-        border = CardDefaults.border(
-            focusedBorder = Border(
-                BorderStroke(3.dp, Color(0xFFD4A843)),
-                shape = shape
-            )
-        )
-    ) {
+    val television = isTelevision()
+
+    val content: @Composable () -> Unit = {
+
         Column {
             Box(
                 modifier = Modifier
@@ -84,6 +76,39 @@ fun CineCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(12.dp)
             )
+        }
+    }
+
+    if (television) {
+    Card(
+        onClick = onClick,
+        modifier = modifier,
+        shape = CardDefaults.shape(shape),
+        colors = CardDefaults.colors(
+            containerColor = Color(0xFF191C24)
+        ),
+        scale = CardDefaults.scale(focusedScale = 1.08f),
+        border = CardDefaults.border(
+            focusedBorder = Border(
+                BorderStroke(3.dp, Color(0xFFD4A843)),
+                shape = shape
+            )
+        )
+    ) {
+        content()
+    }
+    } else {
+        androidx.compose.material3.Surface(
+            modifier = modifier.combinedClickable(
+                onClick = onClick,
+            ),
+            shape = shape,
+            color = Color(0xFF191C24),
+            contentColor = Color.White
+        ) {
+            Column {
+                content()
+            }
         }
     }
 }

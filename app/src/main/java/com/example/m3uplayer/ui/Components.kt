@@ -1,9 +1,12 @@
 package com.example.m3uplayer.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +48,7 @@ class FocusMemory {
     var key: String? = null
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChannelCard(
     channel: Channel,
@@ -65,19 +69,10 @@ fun ChannelCard(
         }
     }
 
-    Card(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = modifier
-            .focusRequester(requester)
-            .onFocusChanged { if (it.hasFocus) focusMemory.key = focusKey },
-        shape = CardDefaults.shape(shape),
-        colors = CardDefaults.colors(containerColor = SurfaceDark),
-        scale = CardDefaults.scale(focusedScale = 1.08f),
-        border = CardDefaults.border(
-            focusedBorder = Border(BorderStroke(3.dp, Accent), shape = shape)
-        ),
-    ) {
+    val television = isTelevision()
+
+    val content: @Composable () -> Unit = {
+
         Box(
             Modifier
                 .fillMaxWidth()
@@ -102,6 +97,38 @@ fun ChannelCard(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         )
+    }
+
+    if (television) {
+    Card(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier
+            .focusRequester(requester)
+            .onFocusChanged { if (it.hasFocus) focusMemory.key = focusKey },
+        shape = CardDefaults.shape(shape),
+        colors = CardDefaults.colors(containerColor = SurfaceDark),
+        scale = CardDefaults.scale(focusedScale = 1.08f),
+        border = CardDefaults.border(
+            focusedBorder = Border(BorderStroke(3.dp, Accent), shape = shape)
+        ),
+    ) {
+        content()
+    }
+    } else {
+        androidx.compose.material3.Surface(
+            modifier = modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
+            shape = shape,
+            color = SurfaceDark,
+            contentColor = Color.White
+        ) {
+            Column {
+                content()
+            }
+        }
     }
 }
 
