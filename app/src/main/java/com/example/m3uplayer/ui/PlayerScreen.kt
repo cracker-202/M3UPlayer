@@ -121,6 +121,7 @@ fun PlayerScreen(
     val libVlc = remember {
         LibVLC(context.applicationContext, arrayListOf(
             "--network-caching=1500",
+            "--http-user-agent=${ChannelRepository.USER_AGENT}",
             "--verbose=2"
         ))
     }
